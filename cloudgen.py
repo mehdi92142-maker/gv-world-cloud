@@ -28,17 +28,17 @@ def setup():
     os.makedirs(HOME, exist_ok=True)
     jre = os.path.join(HOME, 'jre')
     if not os.path.exists(os.path.join(jre, 'bin', 'java')):
-        urllib.request.urlretrieve('https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jre/hotspot/normal/eclipse', HOME + '/jre.tgz')
+        sh(f"curl -sSLf -m 600 -o {HOME}/jre.tgz https://api.adoptium.net/v3/binary/latest/25/ga/linux/x64/jre/hotspot/normal/eclipse")
         os.makedirs(jre, exist_ok=True)
         sh(f'tar xzf {HOME}/jre.tgz -C {jre} --strip-components=1')
     jar = os.path.join(HOME, 'server.jar')
     if not os.path.exists(jar):
-        m = json.load(urllib.request.urlopen('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'))
-        v = json.load(urllib.request.urlopen([x for x in m['versions'] if x['id'] == '26.2'][0]['url']))
+        m = json.loads(sh('curl -sSLf -m 120 https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'))
+        v = json.loads(sh(f"curl -sSLf -m 120 {[x for x in m['versions'] if x['id'] == '26.2'][0]['url']}"))
         d = v['downloads']['server']
         if d['sha1'] != SHA1:
             sys.exit('manifest sha1 differs from the user file -- STOP')
-        urllib.request.urlretrieve(d['url'], jar)
+        sh(f"curl -sSLf -m 600 -o {jar} {d['url']}")   # curl (urllib got 403 from the sandbox proxy)
     if hashlib.sha1(open(jar, 'rb').read()).hexdigest() != SHA1:
         sys.exit('server.jar sha1 mismatch -- STOP')
     try:
