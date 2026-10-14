@@ -18,6 +18,9 @@ Usage: python3 gvworker.py K N MINUTES [RADIUS]
 """
 import glob, hashlib, io, json, math, os, re, shutil, subprocess, sys, tarfile, threading, time, zlib, queue
 
+S2ONLY = sys.argv[1] == 's2only'                    # test: python3 gvworker.py s2only BX BZ
+if S2ONLY:
+    S2BLOCK = (int(sys.argv[2]), int(sys.argv[3])); sys.argv = [sys.argv[0], '0', '1', '120']
 K, N, MINUTES = int(sys.argv[1]), int(sys.argv[2]), float(sys.argv[3])
 RADIUS = int(sys.argv[4]) if len(sys.argv) > 4 else 10000
 SEED = '3942280111883238289'
@@ -368,6 +371,9 @@ def main():
     setup()
     load_orig_branches()
     local_gen = {}
+    if S2ONLY:
+        stage2(S2BLOCK, sorted(BLOCKS[S2BLOCK]), local_gen)
+        log('S2ONLY DONE'); return
     idle = 0
     while left() > 300:
         orig, done = state()
