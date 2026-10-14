@@ -1,0 +1,31 @@
+name: relay-to-huggingface
+on:
+  push:
+    branches: ['out-*']
+permissions:
+  contents: write
+concurrency:
+  group: relay-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q huggingface_hub==0.36.0
+      - name: verify + upload to Hugging Face, then delete the branch
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git fetch -q --depth 1 origin master && git show FETCH_HEAD:relay.py > /tmp/relay.py
+          python /tmp/relay.py
+      - name: delete the relayed branch
+        run: git push origin --delete "${{ github.ref_name }}"
