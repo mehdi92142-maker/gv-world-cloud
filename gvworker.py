@@ -16,7 +16,7 @@ distance; block i belongs to worker i % N.
 Stops starting new work near the time limit; a crash only loses the unpushed block (done again next hour).
 Usage: python3 gvworker.py K N MINUTES [RADIUS]
 """
-import glob, hashlib, io, json, math, os, re, shutil, subprocess, sys, tarfile, threading, time, zlib, queue
+import random, glob, hashlib, io, json, math, os, re, shutil, subprocess, sys, tarfile, threading, time, zlib, queue
 
 S2ONLY = sys.argv[1] == 's2only'                    # test: python3 gvworker.py s2only BX BZ
 if S2ONLY:
@@ -385,11 +385,15 @@ def main():
             continue
         ready = [b for b in MINE if b not in done and f'-b{b[0]}_{b[1]}' not in pend
                  and all(q in orig or q in local_gen for q in ring(BLOCKS[b]))]
+        if not ready:   # own blocks waiting/done: help with any other ready block (random -> rare double work)
+            ready = [b for b in BLOCKS if b not in done and f'-b{b[0]}_{b[1]}' not in pend
+                     and all(q in orig or q in local_gen for q in ring(BLOCKS[b]))]
         if ready and left() > 30 * 60:
-            stage2(ready[0], sorted(BLOCKS[ready[0]]), local_gen)
+            b = random.choice(ready)
+            stage2(b, sorted(BLOCKS[b]), local_gen)
             idle = 0
             continue
-        todo_s2 = [b for b in MINE if b not in done]
+        todo_s2 = [b for b in BLOCKS if b not in done]
         if not todo_s2 and not todo_gen:
             log('ALL MY WORK IS DONE')
             break
