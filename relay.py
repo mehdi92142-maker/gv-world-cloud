@@ -12,13 +12,16 @@ if not tok:
     sys.exit('HF_TOKEN secret missing')
 rows = [l.split() for l in open('manifest.txt').read().splitlines() if l.strip()]
 ops = {REPO: [], PUB: []}
+api = HfApi(token=tok)
+have = {f.rfilename for f in api.list_repo_tree(PUB, repo_type='dataset', path_in_repo='orig')}
 for path, size, sha in rows:
     b = open(path, 'rb').read()
     if len(b) != int(size) or hashlib.sha1(b).hexdigest() != sha:
         sys.exit(f'verify failed: {path}')
+    if path.startswith('orig/') and path in have:
+        continue                      # first copy wins (tiles were made from it)
     ops[PUB if path.startswith(('orig/', 'done/')) else REPO].append(CommitOperationAdd(path_in_repo=path, path_or_fileobj=path))
 ops[REPO].append(CommitOperationAdd(path_in_repo=f'manifests/{branch}.txt', path_or_fileobj='manifest.txt'))
-api = HfApi(token=tok)
 # private first, public (done markers) last: a block is only marked done when its tiles are safely stored
 for repo in (REPO, PUB):
     if not ops[repo]:
